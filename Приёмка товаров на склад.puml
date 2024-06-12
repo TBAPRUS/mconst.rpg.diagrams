@@ -1,0 +1,89 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+actor "Пользователь" as user
+box mconst.rpg.catalog
+        participant "Контроллер" as controller
+        participant "Сервис" as service
+        participant "Репозиторий" as repository
+end box
+participant "База данных" as db
+
+group Приёмка товаров на склад #1
+    user -> controller: POST /products\nИнформация о товарах
+    activate user
+    activate controller
+    controller -> controller: Проверка входящего запроса
+    alt Успешная валидация
+        controller -> service: Запрос на добавление товаров
+        activate service
+        service -> repository: Запрос на создание товара
+        activate repository
+        repository -> db: Запрос на создание товара
+        activate db
+        db --> repository: Созданные товары
+        deactivate db
+        repository --> service: Созданные товары
+        deactivate repository
+        service --> controller: Созданные товары
+        deactivate service
+        controller --> user: Информация о созданных товарах
+    else Ошибка валидации
+        controller --> user: Ответ с ошибкой
+        deactivate controller
+        deactivate user
+    end
+end group
+
+group Приёмка товаров на склад #2
+    alt Товар существует
+        user -> controller: POST /products/:id/add-count\nКоличество добавляемого товара
+        activate user
+        activate controller
+        controller -> controller: Валидация данных
+        alt Успешная валидация
+            controller -> service: Добавить количество товаров
+            activate service
+            service -> repository: Добавить количество товаров
+            activate repository
+            repository -> db: Добавить количество товаров
+            activate db
+            db --> repository: Информация о товаре
+            deactivate db
+            repository --> service: Информация о товаре
+            deactivate repository
+            service --> controller: Информация о товаре
+            controller --> user: Информация о товаре
+        else Ошибка валидации
+            controller --> user: Ошибка
+            deactivate controller
+            deactivate user
+        end
+    else Товар не существует
+        user -> controller: POST /products\nИнформация о товаре
+        activate user
+        activate controller
+        controller -> controller: Валидация данных
+        alt Успешная валидация
+            controller -> service: Добавить товар
+            activate service
+            service -> repository: Добавить товар
+            activate repository
+            repository -> db: Добавить товар
+            activate db
+            db --> repository: Информация о товаре
+            deactivate db
+            repository --> service: Информация о товаре
+            deactivate repository
+            service --> controller: Информация о товаре
+            controller --> user: Информация о товаре
+        else Ошибка валидации
+            controller --> user: Ошибка
+            deactivate controller
+            deactivate user
+        end
+    end
+end group
+@enduml
