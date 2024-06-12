@@ -11,11 +11,19 @@ box mconst.rpg.catalog
 end box
 participant "База данных" as db
 
+note over user: Тут указано 2 подхода к описанию\nдействия. В 1 считается, что сущности нет\n Во 2 рассматривается сразу 2 варианта
+
+note over controller: Вижу 2 варианта:
+note over controller: 1. Разделять сущности и давать каждому своё имя и id (ProductController)
+note over controller: 2. Если логики мало (по 1 единице каждой сущности) называть их просто (Контроллер)
+
 group Приёмка товаров на склад #1
     user -> controller: POST /products\nИнформация о товарах
+    note over user: Обсудить описание\nдействия
     activate user
     activate controller
     controller -> controller: Проверка входящего запроса
+    note over controller: Возможно стоит подругому отображать разделение путей выполнения
     alt Успешная валидация
         controller -> service: Запрос на добавление товаров
         activate service
