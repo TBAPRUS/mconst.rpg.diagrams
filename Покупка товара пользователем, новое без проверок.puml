@@ -1,0 +1,42 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+actor "Пользователь" as user
+participant "сервис Order" as orderService
+participant "сервис Catalog" as catalogService
+participant "сервис Account" as accountService
+participant "сервис User" as userService
+
+group Покупка товара пользователем
+    user -> orderService: Запрос на покупку
+    activate user
+    activate orderService
+    orderService -> orderService: Транзакция
+    orderService -> catalogService: Получение информации\nо товаре с транзакцией
+    activate catalogService
+    catalogService -> catalogService: Транзакция
+    orderService <-- catalogService: Товар
+    deactivate catalogService
+    orderService -> accountService: Получение информации\nоб аккаунте с транзакцией
+    activate accountService
+    accountService -> accountService: Транзакция
+    orderService <-- accountService: Аккаунт
+    deactivate accountService
+    orderService -> orderService: Создание заказа
+    orderService -> accountService: Вычитание средств
+    activate accountService
+    orderService <-- accountService: Аккаунт
+    deactivate accountService
+    orderService -> orderService: Коммит транзакции
+    orderService -> catalogService: Коммит транзакции
+    activate catalogService
+    orderService <-- catalogService: Успех
+    deactivate catalogService
+    orderService -> accountService: Коммит транзакции
+    activate accountService
+    orderService <-- accountService: Успех
+    deactivate accountService
+    user <-- orderService: Заказ
+end group
+
+@enduml
