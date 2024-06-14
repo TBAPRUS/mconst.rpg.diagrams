@@ -1,97 +1,62 @@
 @startuml
 'https://plantuml.com/sequence-diagram
 
-'autonumber
-
 actor "Пользователь" as user
 box mconst.rpg.catalog
-        participant "Контроллер" as controller
-        participant "Сервис" as service
-        participant "Репозиторий" as repository
+    participant "Контроллер продуктов" as productController
+    participant "Сервис продуктов" as productService
+    participant "Репозиторий продуктов" as productRepository
 end box
 participant "База данных" as db
 
-note over user: Тут указано 2 подхода к описанию\nдействия. В 1 считается, что сущности нет\n Во 2 рассматривается сразу 2 варианта
-
-note over controller: Вижу 2 варианта:
-note over controller: 1. Разделять сущности и давать каждому своё имя и id (ProductController)
-note over controller: 2. Если логики мало (по 1 единице каждой сущности) называть их просто (Контроллер)
-
-group Приёмка товаров на склад #1
-    user -> controller: POST /products\nИнформация о товарах
-    note over user: Обсудить описание\nдействия
+group Приёмка товаров на склад, кейс: существующий товар
+    user -> productController: POST /products/:id/add-count\nКоличество добавляемого товара
     activate user
-    activate controller
-    controller -> controller: Проверка входящего запроса
-    note over controller: Возможно стоит подругому отображать разделение путей выполнения
-    alt Успешная валидация
-        controller -> service: Запрос на добавление товаров
-        activate service
-        service -> repository: Запрос на создание товара
-        activate repository
-        repository -> db: Запрос на создание товара
-        activate db
-        db --> repository: Созданные товары
-        deactivate db
-        repository --> service: Созданные товары
-        deactivate repository
-        service --> controller: Созданные товары
-        deactivate service
-        controller --> user: Информация о созданных товарах
-    else Ошибка валидации
-        controller --> user: Ответ с ошибкой
-        deactivate controller
-        deactivate user
-    end
+    activate productController
+    productController -> productController: Валидация данных
+    group Ошибка валидации
+        productController --> user: Ошибка валидации
+    end group
+    productController -> productService: Добавить количество товаров
+    activate productService
+    productService -> productRepository: Добавить количество товаров
+    activate productRepository
+    productRepository -> db: Добавить количество товаров
+    activate db
+    db --> productRepository: Информация о товаре
+    deactivate db
+    productRepository --> productService: Информация о товаре
+    deactivate productRepository
+    productService --> productController: Информация о товаре
+    deactivate productService
+    productController --> user: Информация о товаре
+    deactivate productController
+    deactivate user
+ end group
+
+ group Приёмка товаров на склад, кейс: новый товар
+    user -> productController: POST /products\nИнформация о товаре
+    activate user
+    activate productController
+    productController -> productController: Валидация данных
+    group Ошибка валидации
+        productController --> user: Ошибка валидации
+    end group
+    productController -> productService: Добавить товар
+    activate productService
+    productService -> productRepository: Добавить товар
+    activate productRepository
+    productRepository -> db: Добавить товар
+    activate db
+    db --> productRepository: Информация о товаре
+    deactivate db
+    productRepository --> productService: Информация о товаре
+    deactivate productRepository
+    productService --> productController: Информация о товаре
+    deactivate productService
+    productController --> user: Информация о товаре
+    deactivate productController
+    deactivate user
 end group
 
-group Приёмка товаров на склад #2
-    alt Товар существует
-        user -> controller: POST /products/:id/add-count\nКоличество добавляемого товара
-        activate user
-        activate controller
-        controller -> controller: Валидация данных
-        alt Успешная валидация
-            controller -> service: Добавить количество товаров
-            activate service
-            service -> repository: Добавить количество товаров
-            activate repository
-            repository -> db: Добавить количество товаров
-            activate db
-            db --> repository: Информация о товаре
-            deactivate db
-            repository --> service: Информация о товаре
-            deactivate repository
-            service --> controller: Информация о товаре
-            controller --> user: Информация о товаре
-        else Ошибка валидации
-            controller --> user: Ошибка
-            deactivate controller
-            deactivate user
-        end
-    else Товар не существует
-        user -> controller: POST /products\nИнформация о товаре
-        activate user
-        activate controller
-        controller -> controller: Валидация данных
-        alt Успешная валидация
-            controller -> service: Добавить товар
-            activate service
-            service -> repository: Добавить товар
-            activate repository
-            repository -> db: Добавить товар
-            activate db
-            db --> repository: Информация о товаре
-            deactivate db
-            repository --> service: Информация о товаре
-            deactivate repository
-            service --> controller: Информация о товаре
-            controller --> user: Информация о товаре
-        else Ошибка валидации
-            controller --> user: Ошибка
-            deactivate controller
-            deactivate user
-        end
-    end
-end group
 @enduml

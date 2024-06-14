@@ -7,84 +7,68 @@ participant "сервис Catalog" as catalogService
 participant "сервис Account" as accountService
 participant "сервис User" as userService
 
-note over user: Возможно стоит\nдобавить API Gateway
-
-group Аутентификация пользователя
-    note over user: Дальнейший сценарий\nдоступен только\nпроверенному пользователю
-end group
-
 group Покупка товара пользователем
-    user -> orderService: Запрос на покупку товара
+    user -> orderService: Запрос на покупку
     activate user
     activate orderService
-    orderService -> orderService: Валидация запроса
-    alt Успешная валидация
-        orderService -> catalogService: Получение информации о товаре
+    orderService -> orderService: Транзакция
+    orderService -> catalogService: Получение информации\nо товаре с транзакцией
+    activate catalogService
+    catalogService -> catalogService: Транзакция
+    orderService <-- catalogService: Товар
+    deactivate catalogService
+    orderService -> orderService: Проверка на\nколичество товара
+    group Нехватка товара
+        orderService -> catalogService: Роллбек транзакции
         activate catalogService
-        catalogService -> catalogService: Проверка существования товара
-        alt Товар существует
-            catalogService --> orderService: Информация о товаре
-            orderService -> orderService: Получение информации\nо заказах с этим товаром
-            note over orderService: Тут идёт проверка на то, хватает ли товаров для покупки,\nвозможно это проверять должен API Gateway, а не orderService
-            orderService -> orderService: Проверка на доступность товаров
-            alt Товаров хватает
-                note over orderService: Тут можно добавить проверку на существование пользователя,\nоднако мы уже провели аутентификацию, поэтому вопрос -\nнужно ли нам это делать
-                orderService -> accountService: Получение информации об аккаунте
-                activate accountService
-                note over accountService: Тут можно добавить проверку на существование аккаунта,\nоднако мы уже провели аутентификацию, поэтому вопрос -\nнужно ли нам это делать
-                accountService --> orderService: Информация об аккаунте
-                deactivate accountService
-                orderService -> orderService: Проверка на достаточность средств
-                alt Средств хватает на приобретение товаров
-                    group Покупка
-                        note over orderService: Транзакция, фриз возможности создавать\nи редактировать заказы, связанные с этим пользователем\nили товаром
-                        orderService -> catalogService: Получение информации о товаре
-                        note over catalogService
-                            Транзакция, фриз товара (что поизойдёт если мы зафризим товар
-                            перед удалением некого его количества товара, а после того, как
-                            юзер купит товар и тразакция закоммитится, другой запрос удалит часть товара
-                            и он уйдёт в <0;
-                            Хотя вроде это невозможно, так как удаление товара перед этим само создаст транзакцию,
-                            а наш сервис получит меньшее количество товара и отменит транзакцию
-                            Вообще у меня возник вопрос, а зачем мне заранее всё проверять, если я могу сделать
-                            это в транзакции и не плодить доп. запросы, всё равно во время транзакции
-                            всё придётся заново проверять)
-                        end note
-                        catalogService --> orderService: Информация о товаре
-                        note over orderService: Если товара недостаточно, то делаем роллбек всех транзакций\nи отправляем ошибку юзеру
-                        orderService -> accountService: Получение аккаунта
-                        activate accountService
-                        note over accountService: Транзакция, фриз аккаунта
-                        accountService --> orderService: Аккаунт
-                        deactivate accountService
-                        note over orderService: Если денег недостаточно, то делаем роллбек всех транзакций\nи отправляем ошибку юзеру
-                        orderService -> orderService: Создание заказа
-                        orderService -> accountService: Вычитание средств
-                        activate accountService
-                        accountService --> orderService: Аккаунт
-                        deactivate accountService
-                        note over orderService: Если где то произошли ошибки, то роллбек и ошибка юзеру, иначи коммит
-                        orderService -> user: Заказ
-                    end group
-                else Нехватка средств
-                    orderService --> user: Ошибка нехватки средств
-                end
-            else Товаров не хватает
-                orderService --> user: Ошибка количества товаров
-            end
-        else Товар не существует
-            catalogService --> orderService: Ошибка существования товара
-            deactivate catalogService
-            orderService --> user: Ошибка существования товара
-        end
-    else Ошибка валидации
-        orderService --> user: Ошибка валидации запроса
-        deactivate user
-        deactivate orderService
-    end
-    group Отправка товара
-        note over user: Логика удаления\nтовара со склада\nпроисходит при запросе\nдругого актёра (завхоз)
-    end
+        orderService <-- catalogService: Успех
+        deactivate catalogService
+        orderService -> orderService: Роллбек транзакции
+        user <-- orderService: Ошибка\nнехватки товаров
+    end group
+    orderService -> accountService: Получение информации\nоб аккаунте с транзакцией
+    activate accountService
+    accountService -> accountService: Транзакция
+    orderService <-- accountService: Аккаунт
+    deactivate accountService
+    orderService -> orderService: Проверка на нехватку средств
+    group Нехватка средств
+        orderService -> catalogService: Роллбек транзакции
+        activate catalogService
+        orderService <-- catalogService: Успех
+        deactivate catalogService
+        orderService -> accountService: Роллбек транзакции
+        activate accountService
+        orderService <-- accountService: Успех
+        deactivate accountService
+        orderService -> orderService: Роллбек транзакции
+        user <-- orderService: Ошибка\nнехватки средств
+    end group
+    orderService -> orderService: Создание заказа
+    orderService -> accountService: Вычитание средств
+    activate accountService
+    orderService <-- accountService: Аккаунт
+    deactivate accountService
+    orderService -> orderService: Коммит транзакции
+    orderService -> catalogService: Коммит транзакции
+    activate catalogService
+    orderService <-- catalogService: Успех
+    deactivate catalogService
+    orderService -> accountService: Коммит транзакции
+    activate accountService
+    orderService <-- accountService: Успех
+    deactivate accountService
+    user <-- orderService: Заказ
 end group
+
+note over orderService
+При возникновении ошибки, связанной с сетью (отсутствие сети),
+либо 500 следует повторять запрос n раз с интервалом в м,
+если запрос не отработает корректно - следует сделать роллбек
+всех транзакций и отправить ошибку пользователю.
+При возникновении ошибки, связанной с сущностями или бизнес
+логикой (отсутствие товара с указанным id), следует сделать
+роллбек всех транзакций и отправить ошибку пользователю.
+end note
 
 @enduml
