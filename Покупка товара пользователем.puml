@@ -11,10 +11,10 @@ group Покупка товара пользователем
     user -> orderService: Запрос на покупку
     activate user
     activate orderService
-    orderService -> orderService: Транзакция
-    orderService -> catalogService: Получение информации\nо товаре с транзакцией
+    orderService -> orderService: Транзакция: старт
+    orderService -> catalogService: Транзакция\nПолучение информации о товаре
     activate catalogService
-    catalogService -> catalogService: Транзакция
+    catalogService -> catalogService: Транзакция: старт
     orderService <-- catalogService: Товар
     deactivate catalogService
     orderService -> orderService: Проверка на\nколичество товара
@@ -26,12 +26,11 @@ group Покупка товара пользователем
         orderService -> orderService: Роллбек транзакции
         user <-- orderService: Ошибка\nнехватки товаров
     end group
-    orderService -> accountService: Получение информации\nоб аккаунте с транзакцией
+    orderService -> accountService: Транзакция\nВычитание средств
     activate accountService
-    accountService -> accountService: Транзакция
-    orderService <-- accountService: Аккаунт
+    accountService -> accountService: Транзакция: старт
+    orderService <-- accountService: Успех
     deactivate accountService
-    orderService -> orderService: Проверка на нехватку средств
     group Нехватка средств
         orderService -> catalogService: Роллбек транзакции
         activate catalogService
@@ -45,10 +44,6 @@ group Покупка товара пользователем
         user <-- orderService: Ошибка\nнехватки средств
     end group
     orderService -> orderService: Создание заказа
-    orderService -> accountService: Вычитание средств
-    activate accountService
-    orderService <-- accountService: Аккаунт
-    deactivate accountService
     orderService -> orderService: Коммит транзакции
     orderService -> catalogService: Коммит транзакции
     activate catalogService
